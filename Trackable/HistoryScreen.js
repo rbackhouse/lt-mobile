@@ -125,12 +125,12 @@ const styles = StyleSheet.create({
         flex: .5
     },
     text: {
-        fontSize: 18,
+        fontSize: 15,
         color: '#000'
     },
     item: {
         backgroundColor: '#CED0CE',
-        padding: 15,
+        padding: 5,
         marginVertical: 8,
         marginHorizontal: 16,
     },

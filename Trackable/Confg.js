@@ -2,14 +2,15 @@ import { Settings } from 'react-native';
 import AsyncStorage from '@react-native-community/async-storage';
 
 export default {
-    setValues: function(id, host, port, useTLS) {
+    setValues: function(id, host, port, useTLS, distance) {
         if (Platform.OS === 'android') {
             AsyncStorage.setItem('@Trackable:id', id);
             AsyncStorage.setItem('@Trackable:host', host);
             AsyncStorage.setItem('@Trackable:port', port);
             AsyncStorage.setItem('@Trackable:useTLS', String(useTLS));
+            AsyncStorage.setItem('@Trackable:distance', distance);
         } else {
-            Settings.set({id: id, host: host, port: port, useTLS: useTLS});
+            Settings.set({id: id, host: host, port: port, useTLS: useTLS, distance: distance});
         }
     },
     getId: function() {
@@ -44,6 +45,13 @@ export default {
             return promise;
         } else {
             return Promise.resolve(Settings.get("useTLS"));
+        }
+    },
+    getDistance: function() {
+        if (Platform.OS === 'android') {
+            return AsyncStorage.getItem('@Trackable:distance');
+        } else {
+            return Promise.resolve(Settings.get("distance"));
         }
     }
 }
