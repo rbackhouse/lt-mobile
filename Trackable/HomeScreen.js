@@ -8,7 +8,8 @@ import {
   Modal,
   Text,
   PermissionsAndroid,
-  FlatList
+  FlatList,
+  NativeEventEmitter
 } from 'react-native';
 
 import {
@@ -22,6 +23,7 @@ import { Input, Button, CheckBox } from 'react-native-elements';
 import Config from './Confg';
 
 const { RNTracker } = NativeModules;
+const emitter = new NativeEventEmitter(RNTracker);
 
 let geolocationCfg = {
     accuracy: {
@@ -248,10 +250,22 @@ class HomeScreen extends React.PureComponent {
     }
 
     componentDidMount() {
+        this.sub1 = emitter.addListener(
+            "OnReportingError",
+            (err) => {
+                if (err.msg === "stream timeout") {
+                    console.log("session timed out");
+                    this.startReporting();
+                } else {
+                    Alert.alert(`Reporting Error`, err.msg);
+                }
+            }
+        );
     }
 
     componentWillUnmount() {
         Geolocation.clearWatch(this.watchId);
+        this.sub1.remove();
     }
 
     login() {
@@ -320,30 +334,7 @@ class HomeScreen extends React.PureComponent {
 
     startSession = () => {
         RNTracker.startSession(this.state.id).then(() => {
-            RNTracker.startReporting(this.state.id)
-            .then(() => {
-                this.setState({isReporting: true});
-                Geolocation.getCurrentPosition(
-                    (position) => {
-                        this.state.locations.push({
-                            latitude: position.coords.latitude, 
-                            longitude: position.coords.longitude, 
-                            id: position.coords.latitude+":"+position.coords.longitude,
-                            distance: 0
-                        });
-                        this.setState({position: position, locations: this.state.locations});
-                        RNTracker.reportLocation(this.state.id, position.coords.latitude, position.coords.longitude, Date.now());
-                    },
-                    (error) => {
-                        Alert.alert(`Code ${error.code}`, error.message);
-                        console.log(error);
-                    },
-                    geolocationCfg
-                );                  
-            })
-            .catch((err) => {
-                Alert.alert(`Start Reporting Error`, err.message);
-            });
+            this.startReporting();
         })
         .catch((err) => {
             Alert.alert(`Start Reporting Error`, err.message);
@@ -352,11 +343,42 @@ class HomeScreen extends React.PureComponent {
 
     stopSession = () => {
         this.setState({markers: [], locations: []});
-        RNTracker.stopReporting(this.state.id);
+        this.stopReporting();
         RNTracker.stopSession(this.state.id).then(() => {
             this.setState({isReporting: false});
         });
     }
+
+    startReporting() {
+        RNTracker.startReporting(this.state.id)
+        .then(() => {
+            this.setState({isReporting: true});
+            Geolocation.getCurrentPosition(
+                (position) => {
+                    this.state.locations.push({
+                        latitude: position.coords.latitude, 
+                        longitude: position.coords.longitude, 
+                        id: position.coords.latitude+":"+position.coords.longitude,
+                        distance: 0
+                    });
+                    this.setState({position: position, locations: this.state.locations});
+                    RNTracker.reportLocation(this.state.id, position.coords.latitude, position.coords.longitude, Date.now());
+                },
+                (error) => {
+                    Alert.alert(`Code ${error.code}`, error.message);
+                    console.log(error);
+                },
+                geolocationCfg
+            );                  
+        })
+        .catch((err) => {
+            Alert.alert(`Start Reporting Error`, err.message);
+        });    
+    }
+    
+    stopReporting() {
+        RNTracker.stopReporting(this.state.id);
+    }    
 
     renderItem = ({item}) => {
         return (

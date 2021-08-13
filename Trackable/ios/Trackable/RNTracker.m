@@ -118,7 +118,9 @@ RCT_EXPORT_METHOD(startReporting:(NSString *)userName resolver:(RCTPromiseResolv
       //resolve(nil);
     } else {
       NSLog(@"Start Reporting error %@", error);
-      //reject(@"startreporting_failure", @"startreporting failure", error);
+      [self sendEventWithName:@"OnReportingError"
+                         body:@{@"msg": error.localizedDescription,
+                                @"code": [NSNumber numberWithLong:error.code]}];
     }
   };
 
@@ -187,7 +189,7 @@ RCT_EXPORT_METHOD(getSessionData:(NSNumber *_Nonnull)sessionId resolve:(RCTPromi
 
 
 - (NSArray<NSString *> *)supportedEvents {
-  return @[@"OnTrackingData"];
+  return @[@"OnTrackingData", @"OnReportingError", @"OnTrackingError"];
 }
 
 + (BOOL)requiresMainQueueSetup {
@@ -206,7 +208,10 @@ RCT_EXPORT_METHOD(getSessionData:(NSNumber *_Nonnull)sessionId resolve:(RCTPromi
 }
 
 - (void)didCloseWithTrailingMetadata:(NSDictionary *)trailingMetadata error:(NSError *)error {
-  if (error) {
+  if (error != nil) {
+    [self sendEventWithName:@"OnTrackingError"
+                       body:@{@"msg": error.localizedDescription,
+                              @"code": [NSNumber numberWithLong:error.code]}];
   }
 }
 

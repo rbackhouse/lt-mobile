@@ -5,7 +5,7 @@ import {
     NativeEventEmitter, 
     NativeModules,
     Text,
-
+    Alert
   } from 'react-native';
   
 import MapView, {PROVIDER_GOOGLE} from 'react-native-maps';
@@ -64,10 +64,27 @@ class TrackingMapScreen extends React.Component {
                 this.setState({markers: this.state.markers});
             }
         );
-        Config.getId()
-        .then((id) => {
-            RNTracker.startTracking(route.params.trackeeName, id);
-        });
+        this.sub2 = emitter.addListener(
+            "OnTrackingError",
+            (err) => {
+                console.log(err);
+                if (err.msg === "stream timeout" || err.msg === "Received RST_STREAM with error code 0") {
+                    Config.getId()
+                    .then((id) => {
+                        RNTracker.stopTracking(this.state.trackeeName, id)
+                        .then(() => {
+                            this.startTracking(this.state.trackeeName);
+                        })
+                        .catch((err) => {
+                            Alert.alert(err.message);
+                        });
+                    });
+                } else {
+                    Alert.alert(`Tracking Error`, err.msg);
+                }
+            }
+        );
+        this.startTracking(route.params.trackeeName);
     }
 
     componentWillUnmount() {
@@ -80,6 +97,14 @@ class TrackingMapScreen extends React.Component {
                 Alert.alert(err.message);
             });
             this.sub1.remove();
+            this.sub2.remove();
+        });
+    }
+
+    startTracking(trackeeName) {
+        Config.getId()
+        .then((id) => {
+            RNTracker.startTracking(trackeeName, id);
         });
     }
 

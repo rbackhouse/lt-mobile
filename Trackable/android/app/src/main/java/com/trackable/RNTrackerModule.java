@@ -191,6 +191,10 @@ public class RNTrackerModule extends ReactContextBaseJavaModule implements Activ
 
             @Override
             public void onError(Throwable t) {
+                WritableMap m = Arguments.createMap();
+                m.putString("msg", t.getLocalizedMessage());
+                m.putInt("code", 0);
+                getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("OnTrackingError", m);
                 finishLatch.countDown();
             }
 
@@ -218,8 +222,14 @@ public class RNTrackerModule extends ReactContextBaseJavaModule implements Activ
 
     @ReactMethod
     public void startReporting(String userName, Promise promise) {
+        Session session = sessions.get(userName);
+        if (session != null) {
+            sessions.remove(userName);
+            session.close();
+            session = null;
+        }
         LocationTrackerGrpc.LocationTrackerStub asyncStub = LocationTrackerGrpc.newStub(channel);
-        Session session = new Session(asyncStub, promise);
+        session = new Session(asyncStub);
         sessions.put(userName, session);
         promise.resolve(null);
     }
@@ -288,10 +298,8 @@ public class RNTrackerModule extends ReactContextBaseJavaModule implements Activ
     public class Session {
         private final CountDownLatch finishLatch = new CountDownLatch(1);
         private StreamObserver<Locationtracker.TrackingData> requestObserver;
-        private Promise promise;
 
-        public Session(LocationTrackerGrpc.LocationTrackerStub asyncStub, Promise promise) {
-            this.promise = promise;
+        public Session(LocationTrackerGrpc.LocationTrackerStub asyncStub) {
             StreamObserver<Locationtracker.ReportLocationResponse> responseObserver = new StreamObserver<Locationtracker.ReportLocationResponse>() {
                 @Override
                 public void onNext(Locationtracker.ReportLocationResponse value) {
@@ -299,7 +307,10 @@ public class RNTrackerModule extends ReactContextBaseJavaModule implements Activ
 
                 @Override
                 public void onError(Throwable t) {
-                    promise.reject(t);
+                    WritableMap m = Arguments.createMap();
+                    m.putString("msg", t.getLocalizedMessage());
+                    m.putInt("code", 0);
+                    getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("OnReportingError", m);
                     finishLatch.countDown();
                 }
 

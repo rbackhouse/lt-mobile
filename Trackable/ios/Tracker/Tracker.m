@@ -73,9 +73,15 @@
 }
 
 -(void) startReporting:(NSString *_Nonnull) userName handler:(GRPCUnaryResponseHandler *_Nonnull)handler {
-    GRPCStreamingProtoCall *call = [self.service
-                                     reportLocationWithResponseHandler:handler
-                                     callOptions:nil];
+    GRPCStreamingProtoCall *call = [self.sessions valueForKey:userName];
+    if (call != nil) {
+        [self.sessions removeObjectForKey:userName];
+        [call finish];
+        call = nil;
+    }
+    call = [self.service
+            reportLocationWithResponseHandler:handler
+            callOptions:nil];
     [call start];
     [self.sessions setObject:call forKey:userName];
 }
